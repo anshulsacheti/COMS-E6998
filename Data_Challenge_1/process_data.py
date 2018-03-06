@@ -20,18 +20,19 @@ def generateGraph():
         Networkx graph with all user interaction edges
 
     Returns
-        anon_edges: nx edge graph
+        G: nx edge graph
     """
 
-    anon_edges = nx.read_edgelist(path="edges_train_anon.txt", nodetype=int)
-    return anon_edges
+    G = nx.read_edgelist(path="edges_train_anon.txt", nodetype=int)
+    G = G.to_undirected()
+    return G
 
-def readCheckinData():
+def readCheckinData(G):
     """
     Reads checkin data file and stores it to a pandas df
 
     Input:
-        None
+        G: networkx graph
 
     Output: pandas df with all checkin data
 
@@ -42,6 +43,9 @@ def readCheckinData():
     checkinDF = pd.read_csv("checkins_train_anon.txt", delimiter="\t", header=None, index_col=False,
                             names=["nodeNum", "dt", "longitude", "latitude"])
     checkinDF['dt'] = pd.to_datetime(checkinDF['dt'])
+
+    graphNodes = np.array(list(G.nodes))
+    checkinDF = checkinDF[checkinDF['nodeNum'].isin(graphNodes)]
 
     return checkinDF
     # with open("checkins_train_anon.txt") as f:
@@ -89,12 +93,26 @@ def getPossibleSeedNodes(G, df, longitude, latitude, r):
     # Calculate distance between each checkin and reference point
     # If within radius d return row
     seedNodes = df.loc[np.sqrt(np.power(df.longitude-longitude,2) + np.power(df.latitude-latitude,2))<=d]
-    localSeeds = seedNodes.nodeNum.unique()
-
-    graphNodes = np.array(list(G.nodes))
-    seedList = np.intersect1d(localSeeds, graphNodes)
+    seedList = seedNodes.nodeNum.unique()
+    #
+    # graphNodes = np.array(list(G.nodes))
+    # seedList = np.intersect1d(localSeeds, graphNodes)
     return seedList
 
+def markNodeSetA(G, setA):
+    """
+    Adds attribute to all A nodes to handle them correctly for promotion
+
+    Input:
+        G: networkx graph
+        setA: list of nodes
+
+    Returns updated graph G with A nodes marked
+    """
+
+    nodeAdict = dict(zip(setA, [1]*len(setA)))
+    nx.set_node_attributes(G, name="isA", values=nodeAdict)
+    return G
 
 def convertMilesToDegrees(miles):
     """

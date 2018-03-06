@@ -64,16 +64,23 @@ def simulate(G, seedSetA, seedSetB, conversionRate):
 
         for n in neighbors:
 
-            # These are only B nodes as all A nodes in nodesWithProduct
+            # All nodes who haven't promoted yet
             if n not in nodesWithProduct:
-                nodeProb = np.random.rand()
 
-                # Converted B to purchase product
-                # It promotes it to it's neighbors
-                if nodeProb < conversionRate:
-                    # print("\t\tNode %s added: %s" % (node, n))
+                # setA node, added property for A nodes
+                if G.node[n]!={}:
                     promotingNodes.add(n)
                     nodesWithProduct.add(n)
+
+                else:
+                    nodeProb = np.random.rand()
+
+                    # Converted B to purchase product
+                    # It promotes it to it's neighbors
+                    if nodeProb < conversionRate:
+                        # print("\t\tNode %s added: %s" % (node, n))
+                        promotingNodes.add(n)
+                        nodesWithProduct.add(n)
 
     # Calculate profit
     profit = len(nodesWithProduct)
