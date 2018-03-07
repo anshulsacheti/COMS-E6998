@@ -38,19 +38,26 @@ def simulate(G, seedSetA, seedSetB, conversionRate):
     # Didn't really use this
     # G.set_node_attributes(G, 'isA', dict(zip(seedSet,[1]*len(seedSet))))
 
-    # Add all A nodes
-    promotingNodes = set(seedSetA)
-    nodesWithProduct = set(seedSetA)
+    # Activate seed nodes
+    combinedSet = np.append(seedSetA, seedSetB)
+    promotingNodes = set(combinedSet)
+    nodesWithProduct = set(combinedSet)
 
+    # Don't need this since all A/B seeds handled the same
+    # # Add all A nodes
+    # promotingNodes = set(seedSetA)
+    # nodesWithProduct = set(seedSetA)
+
+    # B nodes in seed set are not handled separately
     # Handle B nodes separately
-    for seedB in seedSetB:
-        nodeProb = np.random.rand()
-
-        # Converted B to purchase product
-        # It promotes it to it's neighbors
-        if nodeProb > conversionRate:
-            promotingNodes.add(seedB)
-            nodesWithProduct.add(seedB)
+    # for seedB in seedSetB:
+    #     nodeProb = np.random.rand()
+    #
+    #     # Converted B to purchase product
+    #     # It promotes it to it's neighbors
+    #     if nodeProb > conversionRate:
+    #         promotingNodes.add(seedB)
+    #         nodesWithProduct.add(seedB)
 
     # Keep updating list of nodes that are promoting or who have purchase the product
     while promotingNodes:
