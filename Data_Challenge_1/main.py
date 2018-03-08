@@ -25,13 +25,12 @@ class MP:
         # print("u: %s" % (u))
         return u.size
 
-def findSeedSet(checkinDF, localSeeds, G, budget, conversionRate, longitude, latitude, runType):
+def findSeedSet(checkinDF, G, budget, conversionRate, longitude, latitude, runType):
     """
     Calculate seed set given local subset with all their checkin info and other related data
 
     Input:
         checkinDF: pandas df with all checkin data
-        localSeeds: list
         G: networkx graph
         budget: int
         conversionRate: float
@@ -53,6 +52,103 @@ def findSeedSet(checkinDF, localSeeds, G, budget, conversionRate, longitude, lat
 
     mp = MP()
     bar = progressbar.ProgressBar()
+
+    if runType == "checkinVariance":
+
+        graphNodes = process_data.generateCheckinVariance(checkinDF, 5)[0:1000]
+        seedSet = np.random.choice(graphNodes, budget, replace=False)
+
+        # neighborSet = np.array([])
+        # seedSet = []
+        #
+        # neighborsPerNode = []
+        # for node in graphNodes:
+        #     neighborsPerNode.append(list(G.neighbors(node)))
+        #
+        # # Much slower
+        # # with Pool() as pool:
+        # #     neighbors = pool.map(G.neighbors, graphNodes)
+        # #     neighborsList = pool.map(list, neighbors)
+        # #     neighborsExpanded = pool.map(np.array, neighborsList)
+        #
+        #
+        # # Get nodes that add the most neighbors
+        # for i in bar(range(budget)):
+        #     mostNeighbors = 0
+        #     bestNode = 0
+        #     uselessNodes = []
+        #     # Attempt at multiprocessing
+        #     if 1==0:
+        #         with Pool() as pool:
+        #             results = pool.map(mp.union, list(zip([list(neighborSet)]*len(neighborsList), neighborsList)))
+        #             # print("results: %s" % (results))
+        #             bestNode = graphNodes[np.argmax(results)]
+        #
+        #     # Find node that adds the most unique neighbors
+        #     else:
+        #         for j,nodeSet in enumerate(neighborsPerNode):
+        #             union = np.union1d(nodeSet, neighborSet)
+        #
+        #             # Get most new neighbors added
+        #             if union.size > mostNeighbors:
+        #                 mostNeighbors = union.size
+        #
+        #                 bestNodeLoc = j
+        #                 bestNode = graphNodes[j]
+        #
+        #         neighborsPerNode = list(np.delete(neighborsPerNode,uselessNodes))
+        #     seedSet.append(bestNode)
+        #     neighborSet = np.union1d(list(G.neighbors(bestNode)), neighborSet)
+
+    if runType=="UsersCities":
+        nyc = process_data.getPossibleSeedNodes(G, checkinDF, 40.730610, -73.935242, 10)
+        rdj = process_data.getPossibleSeedNodes(G, checkinDF, -22.970722, -43.182365, 10)
+        ldn = process_data.getPossibleSeedNodes(G, checkinDF, 51.509865, -0.118092, 10)
+        las = process_data.getPossibleSeedNodes(G, checkinDF, 34.0522, -118.2437, 10)
+
+        graphNodes = np.append(las, np.append(ldn, np.append(nyc,rdj)))
+
+        neighborSet = np.array([])
+        seedSet = []
+
+        neighborsPerNode = []
+        for node in graphNodes:
+            neighborsPerNode.append(list(G.neighbors(node)))
+
+        # Much slower
+        # with Pool() as pool:
+        #     neighbors = pool.map(G.neighbors, graphNodes)
+        #     neighborsList = pool.map(list, neighbors)
+        #     neighborsExpanded = pool.map(np.array, neighborsList)
+
+
+        # Get nodes that add the most neighbors
+        for i in bar(range(budget)):
+            mostNeighbors = 0
+            bestNode = 0
+            uselessNodes = []
+            # Attempt at multiprocessing
+            if 1==0:
+                with Pool() as pool:
+                    results = pool.map(mp.union, list(zip([list(neighborSet)]*len(neighborsList), neighborsList)))
+                    # print("results: %s" % (results))
+                    bestNode = graphNodes[np.argmax(results)]
+
+            # Find node that adds the most unique neighbors
+            else:
+                for j,nodeSet in enumerate(neighborsPerNode):
+                    union = np.union1d(nodeSet, neighborSet)
+
+                    # Get most new neighbors added
+                    if union.size > mostNeighbors:
+                        mostNeighbors = union.size
+
+                        bestNodeLoc = j
+                        bestNode = graphNodes[j]
+
+                neighborsPerNode = list(np.delete(neighborsPerNode,uselessNodes))
+            seedSet.append(bestNode)
+            neighborSet = np.union1d(list(G.neighbors(bestNode)), neighborSet)
 
     if runType=="GreedyLocation":
         pass
@@ -79,7 +175,7 @@ def findSeedSet(checkinDF, localSeeds, G, budget, conversionRate, longitude, lat
         for i in bar(range(budget)):
             mostNeighbors = 0
             bestNode = 0
-
+            uselessNodes = []
             # Attempt at multiprocessing
             if 1==0:
                 with Pool() as pool:
@@ -93,11 +189,13 @@ def findSeedSet(checkinDF, localSeeds, G, budget, conversionRate, longitude, lat
                     union = np.union1d(nodeSet, neighborSet)
 
                     # Get most new neighbors added
-                    if union.size > mostNeighbors and not np.isin(graphNodes[j], seedSet):
+                    if union.size > mostNeighbors:
                         mostNeighbors = union.size
+
                         bestNodeLoc = j
                         bestNode = graphNodes[j]
 
+                neighborsPerNode = list(np.delete(neighborsPerNode,uselessNodes))
             seedSet.append(bestNode)
             neighborSet = np.union1d(list(G.neighbors(bestNode)), neighborSet)
 
@@ -166,8 +264,9 @@ if __name__ == "__main__":
 
     # Iterate
     print("RunType: %s" % runType)
+    start = time.time()
     for i in range(iters):
-        seedsA, seedsB = findSeedSet(checkinDF, seedList, G, seedSize, conversionRate, longitude, latitude, runType)
+        seedsA, seedsB = findSeedSet(checkinDF, G, seedSize, conversionRate, longitude, latitude, runType)
         profit = simulate_graph.simulate(G, seedsA, seedsB, conversionRate)
         totalProfit += profit
         profitList = np.append(profitList, np.array([profit]))
@@ -179,7 +278,12 @@ if __name__ == "__main__":
 
         if i % (iters/10) == 0:
             print("On iter %d" % (i))
+            print("Best profit: %d" % (bestProfit))
+            if i>0:
+                print("Current avg: %d" % int(totalProfit*1.0/(i+1)))
+            print("------------")
 
+    print("Run time: %f" % (time.time()-start))
     print("Profit over %d iters: %d" % (iters, totalProfit*1.0/iters))
     print("Best profit: %d" % (bestProfit))
 

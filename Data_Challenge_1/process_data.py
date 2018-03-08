@@ -3,6 +3,7 @@ import networkx as nx
 import numpy as np
 import pandas as pd
 import dateutil.parser
+import pdb
 
 # Define the coordinates of label A as anything within a radius of 10 miles
 # define New York as (40.730610, -73.935242), Rio de Janeiro as (-22.970722, - 43.182365),
@@ -98,6 +99,29 @@ def getPossibleSeedNodes(G, df, longitude, latitude, r):
     # graphNodes = np.array(list(G.nodes))
     # seedList = np.intersect1d(localSeeds, graphNodes)
     return seedList
+
+def generateCheckinVariance(df, count):
+    """
+    Calculates and returns nodes in descending order of variance in check in location
+
+    Inputs:
+        df: pandas dataframe
+        count: integer
+
+    Outputs:
+        nodes: np 1d array
+
+    Returns nodes in descending order of variance
+    """
+    def calculate_llvar(row):
+        return np.sqrt(np.power(row.longitude,2)+np.power(row.latitude,2))
+
+    g = df.groupby(['nodeNum'], sort=False)
+    g = g.filter(lambda x: len(x) > count)
+    g = g.groupby(['nodeNum'], sort=False).var()
+    g.loc[:,'llvar'] = g.apply(calculate_llvar, axis=1)
+    nodes = list(g.sort_values('llvar', ascending=False).index)
+    return nodes
 
 def markNodeSetA(G, setA):
     """
