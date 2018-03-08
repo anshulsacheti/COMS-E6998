@@ -8,6 +8,10 @@ import sys
 import simulate_graph
 import process_data
 import pdb
+from multiprocessing import Pool
+import os
+import itertools
+import progressbar
 
 def findSeedSet(checkinDF, localSeeds, G, budget, conversionRate, longitude, latitude, runType):
     """
@@ -34,6 +38,7 @@ def findSeedSet(checkinDF, localSeeds, G, budget, conversionRate, longitude, lat
     # seedNodeEntries = df[df.nodeNum.isin(seedList)]
     # seedsA = []
     # seedsB = np.random.choice(checkinDF.nodeNum.unique(), budget)
+    bar = progressbar.ProgressBar()
 
     if runType=="GreedyLocation":
         pass
@@ -45,21 +50,23 @@ def findSeedSet(checkinDF, localSeeds, G, budget, conversionRate, longitude, lat
         seedSet = []
 
         # Get nodes that add the most neighbors
-        for i in range(budget):
+        for i in bar(range(budget)):
             mostNeighbors = 0
             bestNode = 0
 
             # Find node that adds the most unique neighbors
-            for n in graphNodes:
-                neighbors = list(G.neighbors(n))
-                union = np.union1d(neighbors, neighborSet)
+            if 1==1:
+                for n in graphNodes:
+                    neighbors = list(G.neighbors(n))
+                    union = np.union1d(neighbors, neighborSet)
 
-                # Get most new neighbors added
-                if union.size > mostNeighbors and not np.isin(n, seedSet):
-                    mostNeighbors = union.size
-                    bestNode = n
+                    # Get most new neighbors added
+                    if union.size > mostNeighbors and not np.isin(n, seedSet):
+                        mostNeighbors = union.size
+                        bestNode = n
 
             seedSet.append(bestNode)
+            neighborSet = np.append(list(G.neighbors(bestNode)), neighborSet)
 
     # Randomized
     if runType=="Randomized":
@@ -143,8 +150,8 @@ if __name__ == "__main__":
     print("Profit over %d iters: %d" % (iters, totalProfit*1.0/iters))
     print("Best profit: %d" % (bestProfit))
 
-    hist, bins = np.histogram(a=profitList, bins="auto")
-    print("Histogram Percent Values: %s" % (hist))
-    print("Histogram Bins: %s" % (bins))
+    # hist, bins = np.histogram(a=profitList, bins="auto")
+    # print("Histogram Percent Values: %s" % (hist))
+    # print("Histogram Bins: %s" % (bins))
 
     print("With seedset:\n%s" % (bestSeedSet))
