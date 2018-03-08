@@ -16,9 +16,10 @@ def simulate(G, seedSetA, seedSetB, conversionRate):
     it to all of their neighbors in the graph.
 
     Everyone of label B buys the product with probability p. If they buy the product,
-    they also promote it to all of their friends; if they don’t, they won’t promote it,
+    they also promote it to all of their friends; if they don't, they won't promote it,
     so the cascade ends at that node.
-    - If someone has bought the product, they won’t buy it or promote it again.
+
+    If someone has bought the product, they won't buy it or promote it again.
 
     Your profit is the number of people of who bought the product when this process is over.
 
