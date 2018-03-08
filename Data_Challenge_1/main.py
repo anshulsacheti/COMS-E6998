@@ -13,14 +13,15 @@ import dill
 import os
 import itertools
 import progressbar
+import time
 
 class MP:
     @staticmethod
-    def union(self, a):
+    def union(a):
         # print("a: %s" % (a))
-        a0 = a[0]
-        a1 = a[1]
-        u = np.union1d(a0,a1)
+        a0=a[0]
+        a1=a[1]
+        u = np.union1d(a0, a1)
         # print("u: %s" % (u))
         return u.size
 
@@ -63,29 +64,32 @@ def findSeedSet(checkinDF, localSeeds, G, budget, conversionRate, longitude, lat
         neighborSet = np.array([])
         seedSet = []
 
-        # neighborsPerNode = []
-        # for node in graphNodes:
-        #     neighborsPerNode.append(list(G.neighbors(node)))
+        neighborsPerNode = []
+        for node in graphNodes:
+            neighborsPerNode.append(list(G.neighbors(node)))
 
-        with Pool() as pool:
-            neighbors = pool.map(G.neighbors, graphNodes)
-            neighborsList = pool.map(list, neighbors)
-            neighborsExpanded = pool.map(np.array, neighborsList)
+        # Much slower
+        # with Pool() as pool:
+        #     neighbors = pool.map(G.neighbors, graphNodes)
+        #     neighborsList = pool.map(list, neighbors)
+        #     neighborsExpanded = pool.map(np.array, neighborsList)
+
 
         # Get nodes that add the most neighbors
         for i in bar(range(budget)):
             mostNeighbors = 0
             bestNode = 0
 
-            # with Pool() as pool:
-            #     pdb.set_trace()
-            #     results = pool.map(np.union1d, [neighborSet]*len(neighborsExpanded), neighborsExpanded)
-            #     print("results: %s" % (results))
-            #     bestNode = graphNodes(np.argmax(results))
+            # Attempt at multiprocessing
+            if 1==0:
+                with Pool() as pool:
+                    results = pool.map(mp.union, list(zip([list(neighborSet)]*len(neighborsList), neighborsList)))
+                    # print("results: %s" % (results))
+                    bestNode = graphNodes[np.argmax(results)]
 
             # Find node that adds the most unique neighbors
-            if 1==0:
-                for j,nodeSet in enumerate(neighborsExpanded):
+            else:
+                for j,nodeSet in enumerate(neighborsPerNode):
                     union = np.union1d(nodeSet, neighborSet)
 
                     # Get most new neighbors added
