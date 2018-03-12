@@ -4,6 +4,8 @@ import numpy as np
 import pandas as pd
 import dateutil.parser
 import pdb
+from datetime import datetime
+import progressbar
 
 # Define the coordinates of label A as anything within a radius of 10 miles
 # define New York as (40.730610, -73.935242), Rio de Janeiro as (-22.970722, - 43.182365),
@@ -47,29 +49,9 @@ def readCheckinData(G):
 
     graphNodes = np.array(list(G.nodes))
     checkinDF = checkinDF[checkinDF['nodeNum'].isin(graphNodes)]
+    checkinDF = checkinDF.loc[(checkinDF.longitude!=0) & (checkinDF.latitude!=0)]
 
     return checkinDF
-    # with open("checkins_train_anon.txt") as f:
-    #     for line in f:
-    #         data=line.split()
-    #
-    #         nodeNum = int(data[0])
-    #         checkinDateTime = dateutil.parser.parse(data[1])
-    #         longitude = float(data[2])
-    #         latitude = float(data[3])
-    #         _ = data [4] # data hash
-    #
-    #         # dateutil.parser.parse(checkinDateTime)
-    #
-    #         checkinDict = {}
-    #         if nodeDict[nodeNum]!={}:
-    #             nodeDict[nodeNum] = {}
-    #         else:
-    #             nodeDict[nodeNum][checkinDateTime] = {"longitude": longitude, "latitude": latitude}
-    #
-    #         nodeDict[nodeNum][]
-    #         print(x)
-    #         break
 
 def getPossibleSeedNodes(G, df, longitude, latitude, r):
     """
@@ -102,7 +84,7 @@ def getPossibleSeedNodes(G, df, longitude, latitude, r):
 
 def generateCheckinVariance(df, count):
     """
-    Calculates and returns nodes in descending order of variance in check in location
+    Calculates and returns nodes in descending order of variance in check in location with at least count checkins
 
     Inputs:
         df: pandas dataframe
@@ -122,6 +104,107 @@ def generateCheckinVariance(df, count):
     g.loc[:,'llvar'] = g.apply(calculate_llvar, axis=1)
     nodes = list(g.sort_values('llvar', ascending=False).index)
     return nodes
+
+def generateCheckinMeanDict(df):
+    """
+    Calculates and returns dictionary of mean check in location for each node
+
+    Inputs:
+        df: pandas dataframe
+
+    Outputs:
+        nodes: dict
+
+    Returns node dictionary with mean long/lat of checkin locations
+    """
+
+    g = df.groupby(['nodeNum'], sort=False).mean()
+    nodes = g.to_dict('index')
+
+    return nodes
+
+def removeNodesWithNeighborsLessThanN(G, N):
+    """
+    Calculates and returns nodes with strictly more than N neighbors
+
+    Inputs:
+        G: networkx graph
+        N: integer
+
+    Outputs:
+        nodes: np 1d array
+
+    Returns nodes with more than N neighbors
+    """
+
+    graphNodes = np.array(list(G.nodes))
+    nodes = []
+    for n in graphNodes:
+        if len(list(G.neighbors(n))) > N:
+            nodes.append(n)
+
+    return nodes
+
+def avgUserCheckinsPerUserLocation(df, r):
+    """
+    Calculate average number of users who had checkins at a location where a user had a checkin
+
+    Inputs:
+        df: pandas dataframe
+        r: radius r in miles
+
+    Outputs:
+        nodes: dict
+
+    Returns node dictionary with mean number of users at each checkin location for some user
+    """
+
+    graphNodes = df.nodeNum.unique()
+    d = convertMilesToDegrees(r)
+    nodes = {}
+    # nodes = dict(zip(graphNodes,np.zeros(len(graphNodes))))
+
+    # Compare long/lat each node checkin with other nodes
+    # Count average number of similar check in locations for that node
+    bar = progressbar.ProgressBar()
+
+    for gN in graphNodes:
+        subDF = df.loc[df.nodeNum==gN]
+
+        # Remove locations near one another to help runtime concerns
+        i = 0
+        while i < subDF.shape[0]:
+            index = subDF.index[i]
+            longitude = subDF.loc[index].longitude
+            latitude = subDF.loc[index].latitude
+            # Might want to scale by number of rows deleted, also might want to loop this across all rows
+            subDF = subDF.loc[(subDF.index!=index) & (np.sqrt(np.power(subDF.longitude-longitude,2) + np.power(subDF.latitude-latitude,2))<=d)]
+
+            i += 1
+
+        dfDict = subDF[["longitude","latitude"]].to_dict('index')
+
+        total = 0
+        keys = list(dfDict.keys())
+        for keyIdx in range(len(keys)):
+            key = keys[keyIdx]
+            longitude = dfDict[key]["longitude"]
+            latitude = dfDict[key]["latitude"]
+            total += (df.loc[(df.nodeNum!=gN) & (np.sqrt(np.power(df.longitude-longitude,2) + np.power(df.latitude-latitude,2))<=d)]).shape[0]
+
+        # Handle div by 0
+        if len(list(dfDict.keys()))!=0:
+            total /= len(list(dfDict.keys()))
+
+        # Handle div by 0
+        if total == 0:
+            total = 1
+        nodes[gN] = total
+
+    return nodes
+
+        # Get all other checkins near same location as her checkin
+
 
 def markNodeSetA(G, setA):
     """

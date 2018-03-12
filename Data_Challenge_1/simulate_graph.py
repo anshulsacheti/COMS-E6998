@@ -68,7 +68,8 @@ def simulate(G, seedSetA, seedSetB, conversionRate):
         try:
             neighbors = G.neighbors(node)
         except nx.exception.NetworkXError:
-            print("Using node %d, %d" % (node, node))
+            # print("Using node %d, %d" % (node, node))
+            continue
 
         for n in neighbors:
 
