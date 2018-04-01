@@ -65,12 +65,7 @@ def simulate(G, seedSetA, seedSetB, conversionRate):
 
         # Evaluate all neighbors
         node = promotingNodes.pop()
-        try:
-            neighbors = G.neighbors(node)
-        except nx.exception.NetworkXError:
-            # print("Using node %d, %d" % (node, node))
-            continue
-
+        neighbors = G.neighbors(int(node))
         for n in neighbors:
 
             # All nodes who haven't promoted yet
@@ -94,4 +89,4 @@ def simulate(G, seedSetA, seedSetB, conversionRate):
     # Calculate profit
     profit = len(nodesWithProduct)
 
-    return profit
+    return [profit, nodesWithProduct]
